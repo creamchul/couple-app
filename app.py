@@ -3,6 +3,14 @@ import pandas as pd
 from datetime import datetime
 from PIL import Image
 import os
+from dotenv import load_dotenv
+
+# .env 파일 로드
+load_dotenv()
+
+# OpenAI API 키 확인
+api_key = os.getenv("OPENAI_API_KEY")
+api_key_is_valid = api_key and api_key != "your_openai_api_key_here"
 
 # 커스텀 모듈 불러오기
 import utils
@@ -28,9 +36,52 @@ init_data_dir()
 # 세션 상태 초기화
 if 'current_page' not in st.session_state:
     st.session_state.current_page = 'home'
+if 'show_api_settings' not in st.session_state:
+    st.session_state.show_api_settings = False
+
+# OpenAI API 키 저장 함수
+def save_api_key(api_key):
+    try:
+        with open('.env', 'w') as f:
+            f.write(f'OPENAI_API_KEY={api_key}')
+        return True
+    except Exception as e:
+        st.error(f"API 키 저장 중 오류 발생: {e}")
+        return False
 
 # 사이드바 네비게이션
 st.sidebar.title("메뉴")
+
+# API 키 설정 기능
+if not api_key_is_valid:
+    st.sidebar.error("⚠️ OpenAI API 키가 설정되지 않았습니다.")
+    
+    if st.sidebar.button("API 키 설정"):
+        st.session_state.show_api_settings = True
+    
+    st.sidebar.info("""
+    API 키 설정 방법:
+    1. OpenAI에서 API 키 발급
+    2. 위 버튼을 클릭하여 API 키 입력
+    3. 또는 `.env.example` 파일을 `.env`로 복사하고 API 키 입력
+    """)
+else:
+    st.sidebar.success("✅ OpenAI API 키가 설정되었습니다.")
+    if st.sidebar.button("API 키 재설정"):
+        st.session_state.show_api_settings = True
+
+# API 키 설정 UI
+if st.session_state.show_api_settings:
+    with st.sidebar.form("api_key_form"):
+        new_api_key = st.text_input("OpenAI API 키", type="password", help="https://platform.openai.com/api-keys 에서 API 키를 발급받으세요.")
+        submit_key = st.form_submit_button("저장")
+        
+        if submit_key and new_api_key:
+            if save_api_key(new_api_key):
+                st.success("API 키가 저장되었습니다. 앱을 새로고침해주세요.")
+                st.session_state.show_api_settings = False
+                api_key = new_api_key
+                api_key_is_valid = True
 
 # 네비게이션 버튼들
 if st.sidebar.button("🏠 홈"):
@@ -46,6 +97,9 @@ if st.sidebar.button("📊 감정 히스토리"):
 if st.session_state.current_page == 'home':
     # 홈 페이지
     st.title("🏠 홈")
+    
+    if not api_key_is_valid:
+        st.warning("⚠️ OpenAI API 키가 설정되지 않았습니다. 사이드바에서 API 키를 설정해주세요.")
     
     # 오늘의 한마디
     st.header("💌 오늘의 한마디")
@@ -119,6 +173,10 @@ elif st.session_state.current_page == 'conversation':
     # 대화 분석 페이지
     st.title("💬 대화 분석")
     
+    # API 키 미설정 경고
+    if not api_key_is_valid:
+        st.warning("⚠️ OpenAI API 키가 설정되지 않아 AI 분석 기능을 사용할 수 없습니다. 사이드바에서 API 키를 설정해주세요.")
+    
     st.markdown("""
     대화 내용을 입력하면 AI가 다음을 생성합니다:
     1. 따뜻한 요약
@@ -171,7 +229,7 @@ elif st.session_state.current_page == 'conversation':
         if not title:
             st.error("추억의 제목을 입력해주세요.")
         if not conversation:
-            st.error("대화 내용을 입력해주세요.")
+            st.error("대화 내용을 입력하세요.")
 
 elif st.session_state.current_page == 'emotions':
     # 감정 히스토리 페이지

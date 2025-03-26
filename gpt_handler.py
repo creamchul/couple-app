@@ -5,8 +5,17 @@ from dotenv import load_dotenv
 # 환경변수 로드
 load_dotenv()
 
-# OpenAI 클라이언트 초기화
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# API 키 확인
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key or api_key == "your_openai_api_key_here":
+    print("경고: OpenAI API 키가 설정되지 않았습니다. 샘플 응답이 반환됩니다.")
+
+# OpenAI 클라이언트 초기화 (API 키가 없어도 일단 시작은 가능하게)
+try:
+    client = OpenAI(api_key=api_key)
+except Exception as e:
+    print(f"OpenAI 클라이언트 초기화 오류: {e}")
+    client = None
 
 # GPT 모델 설정
 GPT_MODEL = "gpt-3.5-turbo"
@@ -30,6 +39,14 @@ def analyze_conversation(conversation):
     Returns:
         tuple: (요약, 감정 분석, 공감 멘트)
     """
+    # API 키가 없는 경우 샘플 응답 반환
+    if not api_key or api_key == "your_openai_api_key_here" or client is None:
+        return (
+            "API 키가 설정되지 않아 샘플 요약을 생성합니다. .env 파일을 확인해주세요.",
+            "API 키가 설정되지 않아 샘플 감정 분석을 생성합니다. .env 파일을 확인해주세요.",
+            "API 키가 설정되지 않아 샘플 공감 멘트를 생성합니다. .env 파일을 확인해주세요."
+        )
+    
     try:
         # 요약 생성
         summary = generate_summary(conversation)
@@ -45,9 +62,9 @@ def analyze_conversation(conversation):
     except Exception as e:
         print(f"GPT API 호출 중 오류 발생: {e}")
         return (
-            "API 오류로 요약을 생성하지 못했습니다.", 
-            "API 오류로 감정을 분석하지 못했습니다.", 
-            "API 오류로 공감 멘트를 생성하지 못했습니다."
+            f"API 오류로 요약을 생성하지 못했습니다. 오류: {str(e)}", 
+            f"API 오류로 감정을 분석하지 못했습니다. 오류: {str(e)}", 
+            f"API 오류로 공감 멘트를 생성하지 못했습니다. 오류: {str(e)}"
         )
 
 def generate_summary(conversation):
@@ -60,6 +77,9 @@ def generate_summary(conversation):
     Returns:
         str: 요약된 내용
     """
+    if client is None:
+        return "API 클라이언트가 초기화되지 않았습니다. .env 파일을 확인해주세요."
+        
     try:
         response = client.chat.completions.create(
             model=GPT_MODEL,
@@ -75,7 +95,7 @@ def generate_summary(conversation):
     
     except Exception as e:
         print(f"요약 생성 중 오류 발생: {e}")
-        return "요약을 생성하지 못했습니다."
+        return f"요약을 생성하지 못했습니다. 오류: {str(e)}"
 
 def analyze_emotion(conversation):
     """
@@ -87,6 +107,9 @@ def analyze_emotion(conversation):
     Returns:
         str: 감정 분석 결과
     """
+    if client is None:
+        return "API 클라이언트가 초기화되지 않았습니다. .env 파일을 확인해주세요."
+        
     try:
         response = client.chat.completions.create(
             model=GPT_MODEL,
@@ -102,7 +125,7 @@ def analyze_emotion(conversation):
     
     except Exception as e:
         print(f"감정 분석 중 오류 발생: {e}")
-        return "감정을 분석하지 못했습니다."
+        return f"감정을 분석하지 못했습니다. 오류: {str(e)}"
 
 def generate_empathy(conversation):
     """
@@ -114,6 +137,9 @@ def generate_empathy(conversation):
     Returns:
         str: 공감 멘트
     """
+    if client is None:
+        return "API 클라이언트가 초기화되지 않았습니다. .env 파일을 확인해주세요."
+        
     try:
         response = client.chat.completions.create(
             model=GPT_MODEL,
@@ -129,4 +155,4 @@ def generate_empathy(conversation):
     
     except Exception as e:
         print(f"공감 멘트 생성 중 오류 발생: {e}")
-        return "공감 멘트를 생성하지 못했습니다." 
+        return f"공감 멘트를 생성하지 못했습니다. 오류: {str(e)}" 
