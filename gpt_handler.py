@@ -1,12 +1,27 @@
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
+import streamlit as st
 
 # 환경변수 로드
 load_dotenv()
 
-# API 키 확인
-api_key = os.getenv("OPENAI_API_KEY")
+# API 키 확인 (1. Streamlit Secrets에서 먼저 체크, 2. 환경 변수에서 체크)
+def get_api_key():
+    # Streamlit Cloud의 경우 Secrets에서 API 키 가져오기 시도
+    try:
+        api_key = st.secrets.get("OPENAI_API_KEY", None)
+        if api_key:
+            return api_key
+    except:
+        pass
+    
+    # 환경 변수에서 API 키 가져오기
+    api_key = os.getenv("OPENAI_API_KEY")
+    return api_key
+
+api_key = get_api_key()
+
 if not api_key or api_key == "your_openai_api_key_here":
     print("경고: OpenAI API 키가 설정되지 않았습니다. 샘플 응답이 반환됩니다.")
 
@@ -42,9 +57,9 @@ def analyze_conversation(conversation):
     # API 키가 없는 경우 샘플 응답 반환
     if not api_key or api_key == "your_openai_api_key_here" or client is None:
         return (
-            "API 키가 설정되지 않아 샘플 요약을 생성합니다. .env 파일을 확인해주세요.",
-            "API 키가 설정되지 않아 샘플 감정 분석을 생성합니다. .env 파일을 확인해주세요.",
-            "API 키가 설정되지 않아 샘플 공감 멘트를 생성합니다. .env 파일을 확인해주세요."
+            "API 키가 설정되지 않아 샘플 요약을 생성합니다. 사이드바에서 API 키를 설정해주세요.",
+            "API 키가 설정되지 않아 샘플 감정 분석을 생성합니다. 사이드바에서 API 키를 설정해주세요.",
+            "API 키가 설정되지 않아 샘플 공감 멘트를 생성합니다. 사이드바에서 API 키를 설정해주세요."
         )
     
     try:
@@ -78,7 +93,7 @@ def generate_summary(conversation):
         str: 요약된 내용
     """
     if client is None:
-        return "API 클라이언트가 초기화되지 않았습니다. .env 파일을 확인해주세요."
+        return "API 클라이언트가 초기화되지 않았습니다. 사이드바에서 API 키를 설정해주세요."
         
     try:
         response = client.chat.completions.create(
@@ -108,7 +123,7 @@ def analyze_emotion(conversation):
         str: 감정 분석 결과
     """
     if client is None:
-        return "API 클라이언트가 초기화되지 않았습니다. .env 파일을 확인해주세요."
+        return "API 클라이언트가 초기화되지 않았습니다. 사이드바에서 API 키를 설정해주세요."
         
     try:
         response = client.chat.completions.create(
@@ -138,7 +153,7 @@ def generate_empathy(conversation):
         str: 공감 멘트
     """
     if client is None:
-        return "API 클라이언트가 초기화되지 않았습니다. .env 파일을 확인해주세요."
+        return "API 클라이언트가 초기화되지 않았습니다. 사이드바에서 API 키를 설정해주세요."
         
     try:
         response = client.chat.completions.create(

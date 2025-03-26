@@ -17,7 +17,7 @@ import utils
 from data_handler import (
     init_data_dir, save_memory, save_today_word, load_today_word,
     load_all_memories, load_recent_memories, load_all_emotions,
-    visualize_emotions, load_image
+    visualize_emotions, load_image, get_data_dir, get_file_paths
 )
 from gpt_handler import analyze_conversation
 
@@ -38,6 +38,14 @@ if 'current_page' not in st.session_state:
     st.session_state.current_page = 'home'
 if 'show_api_settings' not in st.session_state:
     st.session_state.show_api_settings = False
+if 'show_debug_info' not in st.session_state:
+    st.session_state.show_debug_info = False
+if 'memories_updated' not in st.session_state:
+    st.session_state.memories_updated = False
+if 'emotions_updated' not in st.session_state:
+    st.session_state.emotions_updated = False
+if 'today_word_updated' not in st.session_state:
+    st.session_state.today_word_updated = False
 
 # OpenAI API 키 저장 함수
 def save_api_key(api_key):
@@ -69,6 +77,47 @@ else:
     st.sidebar.success("✅ OpenAI API 키가 설정되었습니다.")
     if st.sidebar.button("API 키 재설정"):
         st.session_state.show_api_settings = True
+
+# 데이터 디버깅 정보 표시 토글
+if st.sidebar.button("디버그 정보 표시" if not st.session_state.show_debug_info else "디버그 정보 숨기기"):
+    st.session_state.show_debug_info = not st.session_state.show_debug_info
+
+# 디버그 정보 표시
+if st.session_state.show_debug_info:
+    st.sidebar.subheader("디버그 정보")
+    data_dir = get_data_dir()
+    data_dir, memories_file, emotions_file, today_word_file, images_dir = get_file_paths()
+    
+    st.sidebar.write(f"데이터 디렉토리: {data_dir}")
+    st.sidebar.write(f"쓰기 권한: {os.access(data_dir, os.W_OK)}")
+    
+    if os.path.exists(memories_file):
+        try:
+            memories = pd.read_csv(memories_file)
+            st.sidebar.write(f"추억 수: {len(memories)}")
+        except:
+            st.sidebar.write("추억 파일 읽기 오류")
+    else:
+        st.sidebar.write("추억 파일 없음")
+    
+    if os.path.exists(emotions_file):
+        try:
+            emotions = pd.read_csv(emotions_file)
+            st.sidebar.write(f"감정 기록 수: {len(emotions)}")
+        except:
+            st.sidebar.write("감정 파일 읽기 오류")
+    else:
+        st.sidebar.write("감정 파일 없음")
+    
+    if os.path.exists(today_word_file):
+        st.sidebar.write("오늘의 한마디 파일 있음")
+    else:
+        st.sidebar.write("오늘의 한마디 파일 없음")
+    
+    st.sidebar.write("세션 상태:")
+    st.sidebar.write(f"- 추억 업데이트됨: {st.session_state.memories_updated}")
+    st.sidebar.write(f"- 감정 업데이트됨: {st.session_state.emotions_updated}")
+    st.sidebar.write(f"- 오늘의 한마디 업데이트됨: {st.session_state.today_word_updated}")
 
 # API 키 설정 UI
 if st.session_state.show_api_settings:
@@ -114,9 +163,10 @@ if st.session_state.current_page == 'home':
         submit_word = st.form_submit_button("저장하기")
     
     if submit_word:
-        save_today_word(new_word)
-        st.success("오늘의 한마디가 저장되었습니다! 💕")
-        st.rerun()
+        if save_today_word(new_word):
+            st.success("오늘의 한마디가 저장되었습니다! 💕")
+            if st.session_state.today_word_updated:
+                st.rerun()
     
     # 최근 추억 표시
     st.header("✨ 최근 추억")
@@ -220,11 +270,12 @@ elif st.session_state.current_page == 'conversation':
             
             # 저장 버튼
             if st.button("추억으로 저장하기"):
-                save_memory(title, conversation, summary, emotion, empathy, image)
-                st.success("추억이 저장되었습니다! 💕")
-                # 타임라인 페이지로 이동
-                st.session_state.current_page = 'timeline'
-                st.rerun()
+                if save_memory(title, conversation, summary, emotion, empathy, image):
+                    st.success("추억이 저장되었습니다! 💕")
+                    # 타임라인 페이지로 이동
+                    if st.session_state.memories_updated:
+                        st.session_state.current_page = 'timeline'
+                        st.rerun()
     elif analyze_button:
         if not title:
             st.error("추억의 제목을 입력해주세요.")
