@@ -62,7 +62,7 @@ if st.session_state.current_page == 'home':
     if submit_word:
         save_today_word(new_word)
         st.success("오늘의 한마디가 저장되었습니다! 💕")
-        st.experimental_rerun()
+        st.rerun()
     
     # 최근 추억 표시
     st.header("✨ 최근 추억")
@@ -166,7 +166,7 @@ elif st.session_state.current_page == 'conversation':
                 st.success("추억이 저장되었습니다! 💕")
                 # 타임라인 페이지로 이동
                 st.session_state.current_page = 'timeline'
-                st.experimental_rerun()
+                st.rerun()
     elif analyze_button:
         if not title:
             st.error("추억의 제목을 입력해주세요.")

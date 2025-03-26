@@ -1,12 +1,12 @@
 import os
-import openai
+from openai import OpenAI
 from dotenv import load_dotenv
 
 # 환경변수 로드
 load_dotenv()
 
-# OpenAI API 키 설정
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# OpenAI 클라이언트 초기화
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # GPT 모델 설정
 GPT_MODEL = "gpt-3.5-turbo"
@@ -61,7 +61,7 @@ def generate_summary(conversation):
         str: 요약된 내용
     """
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model=GPT_MODEL,
             messages=[
                 {"role": "system", "content": "당신은 커플의 대화를 따뜻하게 요약해주는 AI입니다."},
@@ -71,7 +71,7 @@ def generate_summary(conversation):
             temperature=0.7
         )
         
-        return response.choices[0].message["content"].strip()
+        return response.choices[0].message.content.strip()
     
     except Exception as e:
         print(f"요약 생성 중 오류 발생: {e}")
@@ -88,7 +88,7 @@ def analyze_emotion(conversation):
         str: 감정 분석 결과
     """
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model=GPT_MODEL,
             messages=[
                 {"role": "system", "content": "당신은 커플의 대화에서 감정을 분석하는 AI입니다."},
@@ -98,7 +98,7 @@ def analyze_emotion(conversation):
             temperature=0.7
         )
         
-        return response.choices[0].message["content"].strip()
+        return response.choices[0].message.content.strip()
     
     except Exception as e:
         print(f"감정 분석 중 오류 발생: {e}")
@@ -115,7 +115,7 @@ def generate_empathy(conversation):
         str: 공감 멘트
     """
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model=GPT_MODEL,
             messages=[
                 {"role": "system", "content": "당신은 커플의 대화에 공감하는 따뜻한 AI입니다."},
@@ -125,7 +125,7 @@ def generate_empathy(conversation):
             temperature=0.8
         )
         
-        return response.choices[0].message["content"].strip()
+        return response.choices[0].message.content.strip()
     
     except Exception as e:
         print(f"공감 멘트 생성 중 오류 발생: {e}")

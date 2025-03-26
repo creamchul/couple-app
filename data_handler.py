@@ -32,8 +32,8 @@ def init_data_dir():
     
     # 오늘의 한마디 파일 초기화
     if not os.path.exists(TODAY_WORD_FILE):
-        with open(TODAY_WORD_FILE, 'w') as f:
-            json.dump({'date': datetime.now().strftime('%Y-%m-%d'), 'word': ''}, f)
+        with open(TODAY_WORD_FILE, 'w', encoding='utf-8') as f:
+            json.dump({'date': datetime.now().strftime('%Y-%m-%d'), 'word': ''}, f, ensure_ascii=False)
 
 # 추억 저장 함수
 def save_memory(title, content, summary, emotion, empathy, image=None):
@@ -50,7 +50,10 @@ def save_memory(title, content, summary, emotion, empathy, image=None):
         image.save(os.path.join(DATA_DIR, image_path))
     
     # 기존 데이터 로드
-    memories = pd.read_csv(MEMORIES_FILE)
+    try:
+        memories = pd.read_csv(MEMORIES_FILE)
+    except:
+        memories = pd.DataFrame(columns=['date', 'title', 'content', 'summary', 'emotion', 'empathy', 'image_path'])
     
     # 새 데이터 추가
     new_memory = pd.DataFrame({
@@ -64,7 +67,7 @@ def save_memory(title, content, summary, emotion, empathy, image=None):
     })
     
     memories = pd.concat([memories, new_memory], ignore_index=True)
-    memories.to_csv(MEMORIES_FILE, index=False)
+    memories.to_csv(MEMORIES_FILE, index=False, encoding='utf-8')
     
     # 감정 데이터도 저장
     save_emotion(date, emotion, "대화 기반 감정 분석")
@@ -76,11 +79,15 @@ def save_emotion(date, emotion, reason):
     init_data_dir()
     
     # 기존 데이터 로드
-    emotions = pd.read_csv(EMOTIONS_FILE)
+    try:
+        emotions = pd.read_csv(EMOTIONS_FILE)
+    except:
+        emotions = pd.DataFrame(columns=['date', 'emotion', 'reason'])
     
     # 같은 날짜에 이미 감정이 저장되어 있는지 확인
     if date in emotions['date'].values:
-        emotions.loc[emotions['date'] == date, ['emotion', 'reason']] = [emotion, reason]
+        emotions.loc[emotions['date'] == date, 'emotion'] = emotion
+        emotions.loc[emotions['date'] == date, 'reason'] = reason
     else:
         new_emotion = pd.DataFrame({
             'date': [date],
@@ -89,7 +96,7 @@ def save_emotion(date, emotion, reason):
         })
         emotions = pd.concat([emotions, new_emotion], ignore_index=True)
     
-    emotions.to_csv(EMOTIONS_FILE, index=False)
+    emotions.to_csv(EMOTIONS_FILE, index=False, encoding='utf-8')
     return True
 
 # 오늘의 한마디 저장 함수
@@ -98,8 +105,8 @@ def save_today_word(word):
     
     date = datetime.now().strftime('%Y-%m-%d')
     
-    with open(TODAY_WORD_FILE, 'w') as f:
-        json.dump({'date': date, 'word': word}, f)
+    with open(TODAY_WORD_FILE, 'w', encoding='utf-8') as f:
+        json.dump({'date': date, 'word': word}, f, ensure_ascii=False)
     
     return True
 
@@ -108,7 +115,7 @@ def load_today_word():
     init_data_dir()
     
     try:
-        with open(TODAY_WORD_FILE, 'r') as f:
+        with open(TODAY_WORD_FILE, 'r', encoding='utf-8') as f:
             data = json.load(f)
         return data
     except:
@@ -119,7 +126,7 @@ def load_all_memories():
     init_data_dir()
     
     try:
-        memories = pd.read_csv(MEMORIES_FILE)
+        memories = pd.read_csv(MEMORIES_FILE, encoding='utf-8')
         return memories.sort_values('date', ascending=False)
     except:
         return pd.DataFrame(columns=['date', 'title', 'content', 'summary', 'emotion', 'empathy', 'image_path'])
@@ -127,7 +134,9 @@ def load_all_memories():
 # 최근 추억 N개 불러오기 함수
 def load_recent_memories(n=3):
     memories = load_all_memories()
-    return memories.head(n)
+    if len(memories) > 0:
+        return memories.head(n)
+    return memories
 
 # 특정 날짜의 추억 불러오기 함수
 def load_memory_by_date(date):
@@ -139,7 +148,7 @@ def load_all_emotions():
     init_data_dir()
     
     try:
-        emotions = pd.read_csv(EMOTIONS_FILE)
+        emotions = pd.read_csv(EMOTIONS_FILE, encoding='utf-8')
         return emotions.sort_values('date')
     except:
         return pd.DataFrame(columns=['date', 'emotion', 'reason'])
@@ -160,10 +169,15 @@ def visualize_emotions():
     
     # 감정이 자주 등장하는 감정 중 하나인지 확인
     def map_emotion(emotion_text):
+        if pd.isna(emotion_text):
+            return '알 수 없음'
         for common in common_emotions:
             if common in emotion_text:
                 return common
-        return emotion_text.split()[0]  # 첫 번째 단어만 사용
+        emotion_words = emotion_text.split()
+        if emotion_words:
+            return emotion_words[0]  # 첫 번째 단어만 사용
+        return '알 수 없음'
     
     # 감정 매핑
     emotions['mapped_emotion'] = emotions['emotion'].apply(map_emotion)
@@ -171,23 +185,27 @@ def visualize_emotions():
     # 그래프 생성
     emotion_counts = emotions['mapped_emotion'].value_counts()
     plt.figure(figsize=(10, 6))
-    emotion_counts.plot(kind='bar', color='skyblue')
-    plt.title('감정 분포')
-    plt.xlabel('감정')
-    plt.ylabel('횟수')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
+    if not emotion_counts.empty:
+        emotion_counts.plot(kind='bar', color='skyblue')
+        plt.title('감정 분포')
+        plt.xlabel('감정')
+        plt.ylabel('횟수')
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        
+        # 이미지 바이트로 변환
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+        
+        # 이미지 인코딩
+        img_str = base64.b64encode(buf.read()).decode()
+        plt.close()
+        
+        return img_str
     
-    # 이미지 바이트로 변환
-    buf = io.BytesIO()
-    plt.savefig(buf, format='png')
-    buf.seek(0)
-    
-    # 이미지 인코딩
-    img_str = base64.b64encode(buf.read()).decode()
     plt.close()
-    
-    return img_str
+    return None
 
 # 이미지 로드 함수
 def load_image(image_path):
